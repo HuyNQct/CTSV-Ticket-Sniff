@@ -1,0 +1,35 @@
+# Dat file nay vao .github/workflows/refresh-token.yml trong repo PRIVATE cua ban.
+# Dat cac secret HUST_USERNAME, HUST_PASSWORD, GH_TOKEN, GIST_ID trong:
+# Settings > Secrets and variables > Actions > New repository secret.
+#
+# Chon lich chay dua tren TTL thuc do duoc cua TokenBKNexus (xem /status tren bot).
+# Vi du: token song ~15h -> chay 2 lan/ngay la du, KHONG can chay moi gio.
+name: Refresh CTSV token
+
+on:
+  schedule:
+    # Vi du: 01:00 va 13:00 UTC = 08:00 va 20:00 gio Viet Nam. Chinh lai cho khop TTL do duoc.
+    - cron: "0 1,13 * * *"
+  workflow_dispatch: {}   # cho phep bam chay tay tu tab Actions de test
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run refresh script
+        env:
+          HUST_USERNAME: ${{ secrets.HUST_USERNAME }}
+          HUST_PASSWORD: ${{ secrets.HUST_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GIST_FILENAME: token.txt
+        run: python refresh_token.py
