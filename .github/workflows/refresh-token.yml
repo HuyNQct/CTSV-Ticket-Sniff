@@ -9,7 +9,7 @@ name: Refresh CTSV token
 on:
   schedule:
     # Chay luc 01:00, 07:00, 13:00, 19:00 gio Viet Nam (cach nhau 6 tieng)
-    - cron: "0 0,6,12,18 * * *"
+#    - cron: "0 0,6,12,18 * * *"
   workflow_dispatch: {}
 
 jobs:
