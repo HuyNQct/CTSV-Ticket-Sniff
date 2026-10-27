@@ -8,9 +8,9 @@ name: Refresh CTSV token
 
 on:
   schedule:
-    # Vi du: 01:00 va 13:00 UTC = 08:00 va 20:00 gio Viet Nam. Chinh lai cho khop TTL do duoc.
-    - cron: "0 1,13 * * *"
-  workflow_dispatch: {}   # cho phep bam chay tay tu tab Actions de test
+    # Chay luc 01:00, 07:00, 13:00, 19:00 gio Viet Nam (cach nhau 6 tieng)
+    - cron: "0 0,6,12,18 * * *"
+  workflow_dispatch: {}
 
 jobs:
   refresh:
