@@ -21,7 +21,7 @@ import sys
 import uuid
 import html
 import json
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs, urlencode, urljoin
 
 import requests
 
@@ -95,6 +95,9 @@ def main():
     action, fields = extract_form(r.text, "loginForm")
     if not action:
         fail("Khong tim thay form dang nhap - giao dien ADFS co the da doi")
+    
+    # Đã fix lỗi MissingSchema tại đây: Nối thành URL tuyệt đối
+    action = urljoin(ADFS_BASE, action)
 
     # 2) POST tai khoan/mat khau
     payload = dict(fields)
