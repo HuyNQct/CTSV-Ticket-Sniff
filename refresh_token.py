@@ -3,17 +3,6 @@
 Tu dang nhap ADFS (asso.hust.edu.vn) bang tai khoan/mat khau, doi lay id_token,
 roi doi id_token do thanh TokenBKNexus (qua Lab/LoginByAccessToken), va ghi
 token do vao mot Gist bi mat cho ESP32 doc.
-
-Bien moi truong can co (dat trong GitHub Actions Secrets, KHONG hardcode):
-  HUST_USERNAME   - vd: huy.nq2517005@sis.hust.edu.vn (dung dung dinh dang
-                    ma trang dang nhap doi hoi - xem placeholder tren form)
-  HUST_PASSWORD   - mat khau tai khoan truong
-  GH_TOKEN        - GitHub Personal Access Token, scope "gist", de ghi vao Gist
-  GIST_ID         - id cua gist bi mat da tao san (chua 1 file, vd token.txt)
-  GIST_FILENAME   - ten file trong gist can ghi (vd "token.txt")
-
-Script KHONG retry nhieu lan khi sai mat khau hoac gap buoc xac thuc la
-(MFA/CAPTCHA) - no dung lai va bao loi ngay, de tranh bi khoa tai khoan.
 """
 import os
 import re
@@ -95,40 +84,40 @@ def main():
     action, fields = extract_form(r.text, "loginForm")
     if not action:
         fail("Khong tim thay form dang nhap - giao dien ADFS co the da doi")
-    
-    # Đã fix lỗi MissingSchema tại đây: Nối thành URL tuyệt đối
+
     action = urljoin(ADFS_BASE, action)
 
-    # 2) POST tai khoan/mat khau
+    # 2) POST tai khoan/mat khau va theo doi chuoi Redirect (toi da 5 buoc nhay)
     payload = dict(fields)
     payload["UserName"] = username
     payload["Password"] = password
     payload.setdefault("AuthMethod", "FormsAuthentication")
 
-    r2 = session.post(action, data=payload, timeout=20, allow_redirects=False)
+    resp = session.post(action, data=payload, timeout=20, allow_redirects=False)
 
-    # Thanh cong: ADFS tra ve 302 voi Location chua #id_token=... trong fragment
-    if r2.status_code in (301, 302, 303) and "Location" in r2.headers:
-        location = r2.headers["Location"]
-        fragment = urlparse(location).fragment
-        if not fragment:
-            fail(f"Redirect khong co fragment chua token: {location[:80]}...")
-        qs = parse_qs(fragment)
-        id_token = qs.get("id_token", [None])[0]
-        if not id_token:
-            fail("Redirect thanh cong nhung khong thay id_token trong fragment")
-    elif r2.status_code == 200:
-        # Khong redirect: hoac sai mat khau, hoac co buoc xac thuc bo sung (MFA/trang khac)
-        err = re.search(r'id="errorText"[^>]*>([^<]*)</span>', r2.text)
-        err_text = html.unescape(err.group(1)).strip() if err and err.group(1) else ""
-        if err_text:
-            fail(f"ADFS tu choi dang nhap: {err_text}")
-        # Khong co loi ro rang nhung cung khong redirect -> co the la buoc MFA la
-        # khong luong truoc duoc. Dung lai, KHONG doan mo, de tranh gui sai du lieu.
-        fail("ADFS khong redirect va khong bao loi ro rang - co the da them buoc "
-             "xac thuc moi (MFA/CAPTCHA). Dang nhap tay va kiem tra lai luong.")
-    else:
-        fail(f"Phan hoi khong mong doi tu ADFS (HTTP {r2.status_code})")
+    id_token = None
+    for _ in range(5):
+        if resp.status_code in (301, 302, 303, 307, 308) and "Location" in resp.headers:
+            location = urljoin(resp.url, resp.headers["Location"])
+            fragment = urlparse(location).fragment
+            if fragment:
+                qs = parse_qs(fragment)
+                id_token = qs.get("id_token", [None])[0]
+                if id_token:
+                    break
+            # Neu chua co fragment chua token (vd: ADFS redirect noi bo), tiep tuc GET theo Location
+            resp = session.get(location, timeout=20, allow_redirects=False)
+        elif resp.status_code == 200:
+            err = re.search(r'id="errorText"[^>]*>([^<]*)</span>', resp.text)
+            err_text = html.unescape(err.group(1)).strip() if err and err.group(1) else ""
+            if err_text:
+                fail(f"ADFS tu choi dang nhap: {err_text}")
+            fail("ADFS dung o trang HTTP 200 ma khong cap token - co the gap buoc xac thuc bo sung (MFA/CAPTCHA).")
+        else:
+            fail(f"Phan hoi khong mong doi tu ADFS (HTTP {resp.status_code})")
+
+    if not id_token:
+        fail("Da theo doi het chuoi redirect nhung van khong tim thay id_token")
 
     # 3) Doi id_token lay TokenBKNexus
     r3 = requests.post(
