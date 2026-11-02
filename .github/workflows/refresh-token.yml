@@ -1,14 +1,8 @@
-# Dat file nay vao .github/workflows/refresh-token.yml trong repo PRIVATE cua ban.
-# Dat cac secret HUST_USERNAME, HUST_PASSWORD, GH_TOKEN, GIST_ID trong:
-# Settings > Secrets and variables > Actions > New repository secret.
-#
-# Chon lich chay dua tren TTL thuc do duoc cua TokenBKNexus (xem /status tren bot).
-# Vi du: token song ~15h -> chay 2 lan/ngay la du, KHONG can chay moi gio.
 name: Refresh CTSV token
 
 on:
 #  schedule:
-    # Chay luc 01:00, 07:00, 13:00, 19:00 gio Viet Nam (cach nhau 6 tieng)
+    # Chay luc 01:00, 07:00, 13:00, 19:00(cach nhau 6 tieng)
 #    - cron: "0 0,6,12,18 * * *"
   workflow_dispatch: {}
 
